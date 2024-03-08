@@ -1,0 +1,24 @@
+site_name: stepik_storeapi
+site_description: Документация stepik_storeapi
+site_author: b4tman
+repo_url: https://github.com/b4tman/stepik_storeapi
+repo_name: stepik_storeapi
+copyright: (c) 2024 Дмитрий Беляев
+
+theme:
+   name: material
+   language: ru
+   locale: ru
+   highlightjs: true
+markdown_extensions:
+  - pymdownx.snippets
+
+plugins:
+  - search:
+      lang: ru
+  - mkapi:
+      config: mkapi_conf.py
+
+nav:
+  - Главная: index.md
+  - Справочник: $api/src/store.***

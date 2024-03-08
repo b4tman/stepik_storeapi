@@ -1,0 +1,4 @@
+mkdocs>=1.5,<2
+pymdown-extensions>=10.7,<11
+mkapi>=2.1,<3
+mkdocs-material>=9.5.10,<10

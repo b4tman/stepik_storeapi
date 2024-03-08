@@ -1,4 +1,4 @@
-# stepic_storeapi
+# stepik_storeapi
 
 решение задачи ["API магазина"](https://stepik.org/lesson/1186984/step/8?unit=1222202) для курса ["Python-разработчик"](https://stepik.org/course/122813/) на [степике](https://stepik.org)
 

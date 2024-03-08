@@ -3,10 +3,10 @@ from store.resources import router
 
 
 def get_app():
+    """Создание приложения"""
+
     app = FastAPI()
-
     app.include_router(router)
-
     return app
 
 

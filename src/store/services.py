@@ -121,6 +121,8 @@ def checkout(
         raise CartIsEmptyException()
     order = Order.from_cart(cart)
     orders_repository.place_order(order)
+    cart.items.clear()
+    carts_repository.save_cart(cart)
     return order
 
 

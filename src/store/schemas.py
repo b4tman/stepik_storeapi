@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import UUID4, BaseModel, EmailStr, PositiveFloat, SecretStr
 
 
 class GetItemModel(BaseModel):
@@ -12,10 +12,10 @@ class GetItemModel(BaseModel):
       - price (float): цена
     """
 
-    id: str
+    id: UUID4
     name: str
     description: str
-    price: float
+    price: PositiveFloat
 
 
 class GetItemsModel(BaseModel):
@@ -41,7 +41,7 @@ class CreateItemModel(BaseModel):
 
     name: str
     description: str
-    price: float
+    price: PositiveFloat
 
 
 class LoginModel(BaseModel):
@@ -53,8 +53,8 @@ class LoginModel(BaseModel):
       - password (str): пароль пользователя
     """
 
-    email: str
-    password: str
+    email: EmailStr
+    password: SecretStr
 
 
 class ErrorModel(BaseModel):
@@ -77,7 +77,7 @@ class GetCartModel(BaseModel):
       - items (список: [GetItemModel]): список товаров
     """
 
-    email: str
+    email: EmailStr
     items: list[GetItemModel]
 
 
@@ -90,8 +90,8 @@ class AddToCartModel(BaseModel):
       - item_id (str): id товара
     """
 
-    email: str
-    item_id: str
+    email: EmailStr
+    item_id: UUID4
 
 
 class CheckoutModel(BaseModel):
@@ -102,7 +102,7 @@ class CheckoutModel(BaseModel):
       - email (str): email пользователя
     """
 
-    email: str
+    email: EmailStr
 
 
 class GetOrderModel(BaseModel):
@@ -114,5 +114,5 @@ class GetOrderModel(BaseModel):
       - items (список: [GetItemModel]): список товаров
     """
 
-    email: str
+    email: EmailStr
     items: list[GetItemModel]

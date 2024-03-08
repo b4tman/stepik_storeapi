@@ -1,4 +1,6 @@
-from fastapi import APIRouter, status, HTTPException
+from typing import Annotated
+from fastapi import APIRouter, Depends, Path, status, HTTPException
+from pydantic import UUID4, EmailStr
 
 from store import services
 from store.domains import Role
@@ -50,7 +52,8 @@ def get_items() -> GetItemsModel:
     },  # Это нужно для сваггера. Мы перечисляем ответы эндпоинта, чтобы получить четкую документацию.
 )
 def create_item(
-    item: CreateItemModel, credentials: LoginModel
+    item: Annotated[CreateItemModel, Depends()],
+    credentials: Annotated[LoginModel, Depends()],
 ) -> (
     GetItemModel
 ):  # credentials – тело с логином и паролем. Обычно аутентификация выглядит сложнее, но для нашего случая пойдет и так.
@@ -70,7 +73,7 @@ def create_item(
 
     current_user = services.login(
         credentials.email,
-        credentials.password,
+        credentials.password.get_secret_value(),
         Repository.users(),
     )
 
@@ -108,7 +111,9 @@ def create_item(
     },  # Это нужно для сваггера. Мы перечисляем ответы эндпоинта, чтобы получить четкую документацию.
 )
 def change_item(
-    item_id: str, data: CreateItemModel, credentials: LoginModel
+    item_id: Annotated[UUID4, Path()],
+    data: Annotated[CreateItemModel, Depends()],
+    credentials: Annotated[LoginModel, Depends()],
 ):  # credentials – тело с логином и паролем. Обычно аутентификация выглядит сложнее, но для нашего случая пойдет и так.
     """Изменение товара
 
@@ -125,7 +130,7 @@ def change_item(
 
     current_user = services.login(
         credentials.email,
-        credentials.password,
+        credentials.password.get_secret_value(),
         Repository.users(),
     )
 
@@ -142,7 +147,7 @@ def change_item(
 
     try:
         services.change_item(
-            item_id,
+            str(item_id),
             Repository.items(),
             name=data.name,
             description=data.description,
@@ -154,7 +159,7 @@ def change_item(
         )
 
 
-@router.post(
+@router.get(
     "/cart/{email}",
     response_model=GetCartModel,
     status_code=status.HTTP_200_OK,
@@ -162,7 +167,7 @@ def change_item(
         200: {"model": GetCartModel},
     },
 )
-def get_cart(email: str) -> GetCartModel:
+def get_cart(email: Annotated[EmailStr, Path()]) -> GetCartModel:
     """Получение корзины
 
     Args:
@@ -196,7 +201,7 @@ def get_cart(email: str) -> GetCartModel:
     status_code=status.HTTP_204_NO_CONTENT,
     responses={204: {"model": None}, 404: {"model": ErrorModel}},
 )
-def add_to_cart(data: AddToCartModel):
+def add_to_cart(data: Annotated[AddToCartModel, Depends()]):
     """Добавление товара в корзину
 
     Args:
@@ -208,7 +213,7 @@ def add_to_cart(data: AddToCartModel):
 
     try:
         services.add_to_cart(
-            data.item_id, data.email, Repository.items(), Repository.carts()
+            str(data.item_id), data.email, Repository.items(), Repository.carts()
         )
     except KeyError:
         raise HTTPException(
@@ -222,7 +227,9 @@ def add_to_cart(data: AddToCartModel):
     status_code=status.HTTP_204_NO_CONTENT,
     responses={204: {"model": None}, 404: {"model": ErrorModel}},
 )
-def remove_from_cart(email: str, item_id: str):
+def remove_from_cart(
+    email: Annotated[EmailStr, Path()], item_id: Annotated[UUID4, Path()]
+):
     """Удаление товара из корзины
 
     Args:
@@ -233,7 +240,7 @@ def remove_from_cart(email: str, item_id: str):
         HTTPException: 404 если товар не найден
     """
     try:
-        services.remove_from_cart(item_id, email, Repository.carts())
+        services.remove_from_cart(str(item_id), email, Repository.carts())
     except KeyError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="item not found"
@@ -249,7 +256,7 @@ def remove_from_cart(email: str, item_id: str):
         428: {"model": ErrorModel},
     },
 )
-def checkout(data: CheckoutModel) -> GetOrderModel:
+def checkout(data: Annotated[CheckoutModel, Depends()]) -> GetOrderModel:
     """Оформление заказа
 
     Args:

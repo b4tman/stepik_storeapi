@@ -32,7 +32,27 @@
 
 ## Запуск
 
-для запуска используйте [uvicorn](https://www.uvicorn.org) с параметрами ниже:
+Создайте виртуальное окружение (если нет):
+
+~~~bash
+pip install --user virtualenv
+virtualenv .venv
+~~~
+
+Активируйте его:
+
+~~~bash
+. .venv/bin/activate
+~~~
+
+Установите зависимости:
+
+~~~bash
+pip install -r requirements.txt
+~~~
+
+Для запуска используйте [uvicorn](https://www.uvicorn.org) с параметрами ниже:
+
 ~~~bash
 uvicorn store.main:app --reload --port 8080
 --app-dir src/

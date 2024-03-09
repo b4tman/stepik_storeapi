@@ -7,7 +7,7 @@ from store.routes.order import router as router_order
 def get_app():
     """Создание приложения"""
 
-    app = FastAPI()
+    app = FastAPI(title="API магазина")
     app.include_router(router_items)
     app.include_router(router_cart)
     app.include_router(router_order)

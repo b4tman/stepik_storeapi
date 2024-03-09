@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import APIRouter, Body, Depends, Path, status, HTTPException
+from fastapi import APIRouter, Depends, Path, status, HTTPException
 from pydantic import UUID4
 
 from store import services

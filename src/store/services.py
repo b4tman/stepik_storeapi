@@ -1,12 +1,16 @@
 from uuid import uuid4
 
-from store.domains import Cart, Item, User, Order
+from fastapi import HTTPException, status
+
+from store.domains import Cart, Item, Role, User, Order
 from store.repositories import (
     ItemsRepository,
+    Repository,
     UsersRepository,
     CartsRepository,
     OrdersRepository,
 )
+from store.schemas import LoginModel
 
 
 class CartIsEmptyException(Exception):
@@ -153,3 +157,35 @@ def login(email: str, password: str, repository: UsersRepository) -> User | None
     users = repository.get_users(email=email, password=password)
     if users:
         return users[0]
+
+
+def authorize(credentials: LoginModel, required_role: Role):
+    """Проверка доступа пользователя к ресурсу по требуемой роли
+
+    Выполняет аутентификацию и авторизацию
+
+    Args:
+        credentials (LoginModel): данные пользователя
+        required_role (Role): необходимая роль пользователя (не ниже)
+
+    Raises:
+        HTTPException: 401 если пользователь не аутентифицирован
+        HTTPException: 403 если доступ запрещён
+    """
+
+    current_user = login(
+        credentials.email,
+        credentials.password.get_secret_value(),
+        Repository.users(),
+    )
+
+    # Это аутентификация
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized user"
+        )
+    # а это авторизация
+    if current_user.role() < required_role:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden resource"
+        )

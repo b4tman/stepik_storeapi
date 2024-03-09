@@ -68,22 +68,7 @@ def create_item(
         GetItemModel: товар
     """
 
-    current_user = services.login(
-        credentials.email,
-        credentials.password.get_secret_value(),
-        Repository.users(),
-    )
-
-    # Это аутентификация
-    if not current_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized user"
-        )
-    # а это авторизация
-    if current_user.role() != Role.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden resource"
-        )
+    services.authorize(credentials, Role.ADMIN)
 
     item = services.create_item(
         item.name,
@@ -125,22 +110,7 @@ def change_item(
         HTTPException: 404 если не найден товар
     """
 
-    current_user = services.login(
-        credentials.email,
-        credentials.password.get_secret_value(),
-        Repository.users(),
-    )
-
-    # Это аутентификация
-    if not current_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized user"
-        )
-    # а это авторизация
-    if current_user.role() < Role.MANAGER:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden resource"
-        )
+    services.authorize(credentials, Role.MANAGER)
 
     try:
         item = services.change_item(

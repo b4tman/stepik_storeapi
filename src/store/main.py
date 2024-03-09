@@ -13,7 +13,7 @@ from store.routes.cart import router as router_cart
 from store.routes.order import router as router_order
 
 
-def get_app():
+def create_app():
     """Создание приложения"""
 
     app = FastAPI(title="API магазина")
@@ -23,7 +23,7 @@ def get_app():
     return app
 
 
-app = get_app()
+app = create_app()
 
 if __name__ == "__main__":
     uvicorn.run("store.main:app", port=8080, reload=True)

@@ -15,7 +15,7 @@ router = APIRouter(tags=["Заказ"])
 
 @router.post(
     "/checkout",
-    response_model=CheckoutModel,
+    response_model=GetOrderModel,
     status_code=status.HTTP_201_CREATED,
     responses={
         201: {"model": GetOrderModel},
@@ -45,7 +45,7 @@ def checkout(data: Annotated[CheckoutModel, Depends()]) -> GetOrderModel:
             status_code=status.HTTP_428_PRECONDITION_REQUIRED, detail="cart is empty"
         )
 
-    return GetOrderModel(
+    result = GetOrderModel(
         email=order.email,
         items=[
             GetItemModel(
@@ -57,3 +57,4 @@ def checkout(data: Annotated[CheckoutModel, Depends()]) -> GetOrderModel:
             for item in order.items
         ],
     )
+    return result

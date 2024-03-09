@@ -146,10 +146,7 @@ class Order:
     items: list[Item]
 
     @classmethod
-    def from_cart(cls, cart: Cart, user: User | None = None, email: str | None = None):
+    def from_cart(cls, cart: Cart):
         """Создание заказа из корзины"""
 
-        if user is None and email is None:
-            raise ValueError("no email")
-        email = email or user.email
-        return cls(str(uuid4()), email, cart.items.copy())
+        return cls(str(uuid4()), cart.email, cart.items.copy())

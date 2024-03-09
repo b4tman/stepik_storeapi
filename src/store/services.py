@@ -95,7 +95,19 @@ def remove_from_cart(item_id: str, email: str, carts_repository: CartsRepository
     """
 
     cart = carts_repository.get_cart(email=email)
-    cart.items = [item for item in cart.items if item.id != item_id]
+    new_items = []
+    has_item = False
+
+    for item in cart.items:
+        if item.id != item_id:
+            new_items.append(item)
+        else:
+            has_item = True
+
+    if not has_item:
+        raise KeyError("item not found in cart")
+
+    cart.items = new_items
     carts_repository.save_cart(cart)
 
 

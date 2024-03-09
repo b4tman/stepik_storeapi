@@ -26,6 +26,17 @@ def test_items_create_401(client_items, credentials_user, item_test):
     assert response.status_code == 401
 
 
+def test_items_create_401_invalid_password(
+    client_items, credentials_admin_invalid_password, item_test
+):
+    params = {}
+    params.update(credentials_admin_invalid_password)
+    params.update(item_test)
+
+    response = client_items.post("", params=params)
+    assert response.status_code == 401
+
+
 def test_items_create_403(client_items, credentials_manager, item_test):
     params = {}
     params.update(credentials_manager)
@@ -33,6 +44,15 @@ def test_items_create_403(client_items, credentials_manager, item_test):
 
     response = client_items.post("", params=params)
     assert response.status_code == 403
+
+
+def test_items_create_422(client_items, credentials_admin, item_invalid):
+    params = {}
+    params.update(credentials_admin)
+    params.update(item_invalid)
+
+    response = client_items.post("", params=params)
+    assert response.status_code == 422
 
 
 def test_items_change_ok(client_items, created_item, credentials_manager, item_test):

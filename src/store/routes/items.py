@@ -1,31 +1,27 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends, Path, status, HTTPException
-from pydantic import UUID4, EmailStr
+from fastapi import APIRouter, Body, Depends, Path, status, HTTPException
+from pydantic import UUID4
 
 from store import services
 from store.domains import Role
 from store.repositories import Repository
 from store.schemas import (
-    AddToCartModel,
-    CheckoutModel,
     CreateItemModel,
     ErrorModel,
-    GetCartModel,
     GetItemModel,
     GetItemsModel,
-    GetOrderModel,
     LoginModel,
 )
 
-router = APIRouter()  # это роутер, он нужен для FastAPI, чтобы определять эндпоинты
+router = APIRouter(prefix="/items", tags=["Товары"])
 
 
-@router.get("/items", response_model=GetItemsModel)
+@router.get("", response_model=GetItemsModel)
 def get_items() -> GetItemsModel:
-    """Получение списка пользователей
+    """Получение списка товаров
 
     Returns:
-        GetItemsModel: список пользователей
+        GetItemsModel: список товаров
     """
     items = services.get_items(Repository.items())
     return GetItemsModel(
@@ -42,14 +38,14 @@ def get_items() -> GetItemsModel:
 
 
 @router.post(
-    "/items",
+    "",
     response_model=GetItemModel,
     status_code=status.HTTP_201_CREATED,
     responses={
         201: {"model": GetItemModel},
         401: {"model": ErrorModel},
         403: {"model": ErrorModel},
-    },  # Это нужно для сваггера. Мы перечисляем ответы эндпоинта, чтобы получить четкую документацию.
+    },
 )
 def create_item(
     item: Annotated[CreateItemModel, Depends()],
@@ -100,7 +96,7 @@ def create_item(
 
 
 @router.put(
-    "/items/{item_id}",
+    "/{item_id}",
     response_model=None,
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
@@ -108,7 +104,7 @@ def create_item(
         401: {"model": ErrorModel},
         403: {"model": ErrorModel},
         404: {"model": ErrorModel},
-    },  # Это нужно для сваггера. Мы перечисляем ответы эндпоинта, чтобы получить четкую документацию.
+    },
 )
 def change_item(
     item_id: Annotated[UUID4, Path()],
@@ -157,137 +153,3 @@ def change_item(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="item not found"
         )
-
-
-@router.get(
-    "/cart/{email}",
-    response_model=GetCartModel,
-    status_code=status.HTTP_200_OK,
-    responses={
-        200: {"model": GetCartModel},
-    },
-)
-def get_cart(email: Annotated[EmailStr, Path()]) -> GetCartModel:
-    """Получение корзины
-
-    Args:
-        email (str): email пользователя
-
-    Returns:
-        GetCartModel: данные корзины
-    """
-    cart = services.get_cart(
-        email,
-        Repository.carts(),
-    )
-
-    return GetCartModel(
-        email=cart.email,
-        items=[
-            GetItemModel(
-                id=item.id,
-                name=item.name,
-                description=item.description,
-                price=item.price / 100,
-            )
-            for item in cart.items
-        ],
-    )
-
-
-@router.post(
-    "/cart",
-    response_model=None,
-    status_code=status.HTTP_204_NO_CONTENT,
-    responses={204: {"model": None}, 404: {"model": ErrorModel}},
-)
-def add_to_cart(data: Annotated[AddToCartModel, Depends()]):
-    """Добавление товара в корзину
-
-    Args:
-        data (AddToCartModel): данные запроса (email и item_id)
-
-    Raises:
-        HTTPException: 404 если товар не найден
-    """
-
-    try:
-        services.add_to_cart(
-            str(data.item_id), data.email, Repository.items(), Repository.carts()
-        )
-    except KeyError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="item not found"
-        )
-
-
-@router.delete(
-    "/cart/{email}/{item_id}",
-    response_model=None,
-    status_code=status.HTTP_204_NO_CONTENT,
-    responses={204: {"model": None}, 404: {"model": ErrorModel}},
-)
-def remove_from_cart(
-    email: Annotated[EmailStr, Path()], item_id: Annotated[UUID4, Path()]
-):
-    """Удаление товара из корзины
-
-    Args:
-        email (str): email пользователя
-        item_id (str): id товара
-
-    Raises:
-        HTTPException: 404 если товар не найден
-    """
-    try:
-        services.remove_from_cart(str(item_id), email, Repository.carts())
-    except KeyError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="item not found"
-        )
-
-
-@router.post(
-    "/checkout",
-    response_model=CheckoutModel,
-    status_code=status.HTTP_201_CREATED,
-    responses={
-        201: {"model": GetOrderModel},
-        428: {"model": ErrorModel},
-    },
-)
-def checkout(data: Annotated[CheckoutModel, Depends()]) -> GetOrderModel:
-    """Оформление заказа
-
-    Args:
-        data (CheckoutModel): данные (email)
-
-    Raises:
-        HTTPException: 428 если корзина пустая
-
-    Returns:
-        GetOrderModel: данные заказа
-    """
-    try:
-        order = services.checkout(
-            data.email,
-            Repository.carts(),
-            Repository.orders(),
-        )
-    except services.CartIsEmptyException:
-        raise HTTPException(
-            status_code=status.HTTP_428_PRECONDITION_REQUIRED, detail="cart is empty"
-        )
-
-    return GetOrderModel(
-        email=order.email,
-        items=[
-            GetItemModel(
-                id=item.id,
-                name=item.name,
-                description=item.description,
-                price=item.price / 100,
-            )
-            for item in order.items
-        ],
-    )

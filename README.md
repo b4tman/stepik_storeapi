@@ -29,7 +29,6 @@
 >
 > В качестве ответа на задачу прикладывайте ссылку на GitHub.
 
-
 [Пример](https://stepik.org/lesson/1186984/step/7?unit=1222202) решения похожей задачи из курса: [gardiys/stepik_blog](https://github.com/gardiys/stepik_blog).
 
 ## Замечания по реализации
@@ -67,7 +66,9 @@ credentials: Annotated[LoginModel, Body()]
 
 Это упрощает тестирование в Swagger UI, но в этом случае данные передаются как query параметры, например `/items?name=123&description=123&price=123&email=123&password=123`, что плохо для реального использования.
 
-## Запуск
+## Установка и запуск
+
+### Виртуальное окружение
 
 Создайте виртуальное окружение (если нет):
 
@@ -82,13 +83,23 @@ virtualenv .venv
 . .venv/bin/activate
 ~~~
 
+### Зависимости
+
 Установите зависимости:
 
 ~~~bash
 pip install -r requirements.txt
 ~~~
 
-Для запуска используйте [uvicorn](https://www.uvicorn.org) с параметрами ниже:
+### Запуск приложения
+
+Запустите напрямую:
+
+~~~bash
+python src/store/main.py
+~~~
+
+Или используйте [uvicorn](https://www.uvicorn.org) с параметрами ниже:
 
 ~~~bash
 uvicorn store.main:app --reload --port 8080 --app-dir src/
@@ -114,5 +125,5 @@ mkdocs serve
 
 Стандартные **локальные** URL документации:
 
-- Документация mkdocs: http://127.0.0.1:8000/
-- Документация Swagger: http://127.0.0.1:8080/docs
+- Документация mkdocs: <http://127.0.0.1:8000/>
+- Документация Swagger: <http://127.0.0.1:8080/docs>

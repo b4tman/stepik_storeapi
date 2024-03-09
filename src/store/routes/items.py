@@ -86,9 +86,9 @@ def create_item(
 
     item = services.create_item(
         item.name,
-        item.description,
         int(item.price * 100),
         Repository.items(),
+        item.description,
     )
     return GetItemModel(
         id=item.id, name=item.name, description=item.description, price=item.price / 100

@@ -14,7 +14,7 @@ class GetItemModel(BaseModel):
 
     id: UUID4
     name: str
-    description: str
+    description: str | None = None
     price: PositiveFloat
 
 
@@ -40,7 +40,7 @@ class CreateItemModel(BaseModel):
     """
 
     name: str
-    description: str
+    description: str | None = None
     price: PositiveFloat
 
 

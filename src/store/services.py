@@ -22,10 +22,10 @@ def get_items(repository: ItemsRepository) -> list[Item]:
 
 
 def create_item(
-    name: str, description: str, price: int, repository: ItemsRepository
+    name: str, price: int, repository: ItemsRepository, description: str | None = None
 ) -> Item:
     """Создание товара"""
-    item = Item(id=str(uuid4()), name=name, description=description, price=price)
+    item = Item(id=str(uuid4()), name=name, price=price, description=description)
     repository.save_item(item=item)
     return item
 

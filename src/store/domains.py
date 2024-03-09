@@ -48,8 +48,8 @@ class Item:
 
     id: str
     name: str
-    description: str
     price: int
+    description: str | None = None
 
 
 @dataclass

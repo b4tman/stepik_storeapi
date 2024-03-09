@@ -63,20 +63,14 @@ def test_items_change_ok(client_items, created_item, credentials_manager, item_t
     data.update(item_test)
     data["description"] = "hello"
 
+    expected = {"id": item_id}
+    expected.update(data)
+
     params = {}
     params.update(credentials_manager)
     params.update(data)
     response = client_items.put(f"/{item_id}", params=params)
     assert response.is_success
 
-    # get items
-    item_data = {"id": item_id}
-    item_data.update(data)
-    expected = {"items": [item_data]}
-
-    response = client_items.get("")
-    assert response.is_success
     actual = response.json()
-    # filter tested items
-    actual["items"] = [item for item in actual["items"] if item["id"] == item_id]
     assert expected == actual

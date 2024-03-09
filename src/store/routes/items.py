@@ -6,6 +6,7 @@ from store import services
 from store.domains import Role
 from store.repositories import Repository
 from store.schemas import (
+    ChangeItemModel,
     CreateItemModel,
     ErrorModel,
     GetItemModel,
@@ -97,10 +98,10 @@ def create_item(
 
 @router.put(
     "/{item_id}",
-    response_model=None,
-    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=GetItemModel,
+    status_code=status.HTTP_200_OK,
     responses={
-        204: {"model": None},
+        200: {"model": GetItemModel},
         401: {"model": ErrorModel},
         403: {"model": ErrorModel},
         404: {"model": ErrorModel},
@@ -108,14 +109,14 @@ def create_item(
 )
 def change_item(
     item_id: Annotated[UUID4, Path()],
-    data: Annotated[CreateItemModel, Depends()],
+    data: Annotated[ChangeItemModel, Depends()],
     credentials: Annotated[LoginModel, Depends()],
 ):  # credentials – тело с логином и паролем. Обычно аутентификация выглядит сложнее, но для нашего случая пойдет и так.
     """Изменение товара
 
     Args:
         item_id (str): id товара
-        data (CreateItemModel): данные товара
+        data (ChangeItemModel): данные товара
         credentials (LoginModel): учетные данные пользователя
 
     Raises:
@@ -142,7 +143,7 @@ def change_item(
         )
 
     try:
-        services.change_item(
+        item = services.change_item(
             str(item_id),
             Repository.items(),
             name=data.name,
@@ -153,3 +154,7 @@ def change_item(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="item not found"
         )
+
+    return GetItemModel(
+        id=item.id, name=item.name, description=item.description, price=item.price / 100
+    )

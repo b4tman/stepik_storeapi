@@ -44,6 +44,21 @@ class CreateItemModel(BaseModel):
     price: PositiveFloat
 
 
+class ChangeItemModel(BaseModel):
+    """Данные товара для изменения
+
+    Поля:
+
+      - name (str): название товара
+      - description (str): описание товара
+      - price (float): цена
+    """
+
+    name: str | None = None
+    description: str | None = None
+    price: PositiveFloat | None = None
+
+
 class LoginModel(BaseModel):
     """Учетные данные пользователя
 

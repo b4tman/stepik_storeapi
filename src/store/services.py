@@ -30,7 +30,7 @@ def create_item(
     return item
 
 
-def change_item(item_id: str, repository: ItemsRepository, **kwargs):
+def change_item(item_id: str, repository: ItemsRepository, **kwargs) -> Item:
     """Изменение товара
 
     Args:
@@ -43,10 +43,11 @@ def change_item(item_id: str, repository: ItemsRepository, **kwargs):
     """
     item = repository.get_item(item_id)
     for k, v in kwargs.items():
-        if not hasattr(item, k):
+        if not hasattr(item, k) or v is None:
             continue
         setattr(item, k, v)
     repository.save_item(item=item)
+    return item
 
 
 def get_cart(

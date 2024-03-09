@@ -105,6 +105,21 @@ python src/store/main.py
 uvicorn store.main:app --reload --port 8080 --app-dir src/
 ~~~
 
+### Запуск тестов
+
+Установите зависимости для разработки:
+
+~~~bash
+pip install -r requirements.dev.txt
+~~~
+
+
+Запустите [pytest](https://pytest.org):
+
+~~~bash
+pytest -v
+~~~
+
 ## Документация
 
 Её необходимо собрать с помошью [mkdocs](https://www.mkdocs.org). Для этого нужно установить зависимости:

@@ -1,0 +1,6 @@
+[tool.pytest.ini_options]
+pythonpath = [
+    ".", "src",
+]
+# FIXME: httpx\_client.py:680: DeprecationWarning: The 'app' shortcut is now deprecated. Use the explicit style 'transport=WSGITransport(app=...)' instead.
+filterwarnings = "ignore::DeprecationWarning:httpx.*:"

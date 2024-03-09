@@ -160,11 +160,11 @@ cython_debug/
 #.idea/
 
 # shelve
-*.bak
-*.dir
-*.dat
+db/
 
 #mkdocs + mkapi
 site/
 docs/api/
 docs/src/
+
+.vscode/

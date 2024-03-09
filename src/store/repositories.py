@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import shelve
 from uuid import uuid4
+import os
 
 from store.domains import Admin, Manager, User, Item, Cart, Order
 
@@ -107,6 +108,19 @@ class OrdersRepository(ABC):
         pass
 
 
+class ShelveDatabase(metaclass=SingletonMeta):
+    def __init__(self):
+        self.path = os.getenv("DB_PATH", "db")
+        self.ensure_path()
+
+    def ensure_path(self):
+        if not os.path.isdir(self.path):
+            os.mkdir(self.path)
+
+    def path_for(self, name):
+        return os.path.join(self.path, name)
+
+
 class MemoryUsersRepository(UsersRepository):
     """
     Реализация пользовательского хранилища в оперативной памяти.
@@ -156,7 +170,7 @@ class ShelveItemsRepository(ItemsRepository):
     """Реализация хранилища товаров через shelve"""
 
     def __init__(self):
-        self.db_name = "items"
+        self.db_name = ShelveDatabase().path_for("items")
 
     def get_items(self) -> list[Item]:
         with shelve.open(self.db_name) as db:
@@ -175,7 +189,7 @@ class ShelveCartsRepository(CartsRepository):
     """Реализация хранилища корзин через shelve"""
 
     def __init__(self):
-        self.db_name = "carts"
+        self.db_name = ShelveDatabase().path_for("carts")
 
     def get_cart(self, user: User | None = None, email: str | None = None) -> Cart:
         if user is None and email is None:
@@ -197,7 +211,7 @@ class ShelveOrdersRepository(OrdersRepository):
     """Реализация хранилища заказов через shelve"""
 
     def __init__(self):
-        self.db_name = "carts"
+        self.db_name = ShelveDatabase().path_for("orders")
 
     def place_order(self, order: Order):
         with shelve.open(self.db_name) as db:

@@ -160,9 +160,7 @@ cython_debug/
 #.idea/
 
 # shelve
-*.bak
-*.dir
-*.dat
+db/
 
 #mkdocs + mkapi
 site/

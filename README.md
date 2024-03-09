@@ -91,8 +91,7 @@ pip install -r requirements.txt
 Для запуска используйте [uvicorn](https://www.uvicorn.org) с параметрами ниже:
 
 ~~~bash
-uvicorn store.main:app --reload --port 8080
---app-dir src/
+uvicorn store.main:app --reload --port 8080 --app-dir src/
 ~~~
 
 ## Документация

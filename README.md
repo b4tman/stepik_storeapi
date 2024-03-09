@@ -68,9 +68,17 @@ credentials: Annotated[LoginModel, Body()]
 
 ## Установка и запуск
 
+### Запуск в Docker
+
+Через [docker-compose](https://github.com/docker/compose):
+
+~~~bash
+docker compose up
+~~~
+
 ### Виртуальное окружение
 
-Создайте виртуальное окружение (если нет):
+Для запуска на локальном ПК, создайте виртуальное окружение (если нет):
 
 ~~~bash
 pip install --user virtualenv
@@ -91,7 +99,7 @@ virtualenv .venv
 pip install -r requirements.txt
 ~~~
 
-### Запуск приложения
+### Запуск приложения локально
 
 Запустите напрямую:
 

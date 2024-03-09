@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends, Path, status, HTTPException
+from fastapi import APIRouter, Depends, Path, status
 from pydantic import UUID4
 
 from store import services
@@ -24,18 +24,7 @@ def get_items() -> GetItemsModel:
     Returns:
         GetItemsModel: список товаров
     """
-    items = services.get_items(Repository.items())
-    return GetItemsModel(
-        items=[
-            GetItemModel(
-                id=item.id,
-                name=item.name,
-                description=item.description,
-                price=item.price / 100,
-            )
-            for item in items
-        ]
-    )
+    return services.get_items(Repository.items())
 
 
 @router.post(
@@ -69,16 +58,7 @@ def create_item(
     """
 
     services.authorize(credentials, Role.ADMIN)
-
-    item = services.create_item(
-        item.name,
-        int(item.price * 100),
-        Repository.items(),
-        item.description,
-    )
-    return GetItemModel(
-        id=item.id, name=item.name, description=item.description, price=item.price / 100
-    )
+    return services.create_item(item, Repository.items())
 
 
 @router.put(
@@ -111,20 +91,4 @@ def change_item(
     """
 
     services.authorize(credentials, Role.MANAGER)
-
-    try:
-        item = services.change_item(
-            str(item_id),
-            Repository.items(),
-            name=data.name,
-            description=data.description,
-            price=int(data.price * 100),
-        )
-    except KeyError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="item not found"
-        )
-
-    return GetItemModel(
-        id=item.id, name=item.name, description=item.description, price=item.price / 100
-    )
+    return services.change_item(item_id, data, Repository.items())

@@ -1,4 +1,6 @@
-from pydantic import UUID4, BaseModel, EmailStr, PositiveFloat, SecretStr
+from pydantic import UUID4, BaseModel, ConfigDict, EmailStr, PositiveFloat, SecretStr
+
+from store.domains import Item
 
 
 class GetItemModel(BaseModel):
@@ -16,6 +18,14 @@ class GetItemModel(BaseModel):
     name: str
     description: str | None = None
     price: PositiveFloat
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    def from_item(cls, item: Item):
+        result = cls.model_validate(item)
+        result.price /= 100
+        return result
 
 
 class GetItemsModel(BaseModel):

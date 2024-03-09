@@ -47,14 +47,6 @@ def checkout(data: Annotated[CheckoutModel, Depends()]) -> GetOrderModel:
 
     result = GetOrderModel(
         email=order.email,
-        items=[
-            GetItemModel(
-                id=item.id,
-                name=item.name,
-                description=item.description,
-                price=item.price / 100,
-            )
-            for item in order.items
-        ],
+        items=[*map(GetItemModel.from_item, order.items)],
     )
     return result

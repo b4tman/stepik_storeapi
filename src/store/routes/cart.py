@@ -38,15 +38,7 @@ def get_cart(email: Annotated[EmailStr, Path()]) -> GetCartModel:
 
     return GetCartModel(
         email=cart.email,
-        items=[
-            GetItemModel(
-                id=item.id,
-                name=item.name,
-                description=item.description,
-                price=item.price / 100,
-            )
-            for item in cart.items
-        ],
+        items=[*map(GetItemModel.from_item, cart.items)],
     )
 
 

@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 from fastapi import HTTPException, status
+from pydantic import UUID4
 
 from store.domains import Cart, Item, Role, User, Order
 from store.repositories import (
@@ -10,7 +11,13 @@ from store.repositories import (
     CartsRepository,
     OrdersRepository,
 )
-from store.schemas import LoginModel
+from store.schemas import (
+    ChangeItemModel,
+    CreateItemModel,
+    GetItemModel,
+    GetItemsModel,
+    LoginModel,
+)
 
 
 class CartIsEmptyException(Exception):
@@ -20,38 +27,52 @@ class CartIsEmptyException(Exception):
         self.message = message
 
 
-def get_items(repository: ItemsRepository) -> list[Item]:
+def get_items(repository: ItemsRepository) -> GetItemsModel:
     """Получение списка товаров"""
-    return repository.get_items()
+    items = repository.get_items()
+    return GetItemsModel(items=[*map(GetItemModel.from_item, items)])
 
 
-def create_item(
-    name: str, price: int, repository: ItemsRepository, description: str | None = None
-) -> Item:
+def create_item(item: CreateItemModel, repository: ItemsRepository) -> GetItemModel:
     """Создание товара"""
-    item = Item(id=str(uuid4()), name=name, price=price, description=description)
+    data = item.model_dump()
+    data["price"] = int(data["price"] * 100)
+    item = Item(id=str(uuid4()), **data)
     repository.save_item(item=item)
-    return item
+
+    return GetItemModel.from_item(item)
 
 
-def change_item(item_id: str, repository: ItemsRepository, **kwargs) -> Item:
+def change_item(
+    item_id: UUID4, data: ChangeItemModel, repository: ItemsRepository
+) -> GetItemModel:
     """Изменение товара
 
     Args:
-        item_id (str): id товара
+        item_id (UUID4): id товара
+        data (ChangeItemModel): измененные данные товара
         repository (ItemsRepository): хранилище товаров
-    Keyword args:
-        name (str): имя
-        description (str): описание
-        price (int): цена * 100
     """
-    item = repository.get_item(item_id)
-    for k, v in kwargs.items():
+
+    try:
+        item = repository.get_item(str(item_id))
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="item not found"
+        )
+
+    data = data.model_dump()
+    price = data.get("price")
+    if price is not None:
+        data["price"] = int(price * 100)
+
+    for k, v in data.items():
         if not hasattr(item, k) or v is None:
             continue
         setattr(item, k, v)
     repository.save_item(item=item)
-    return item
+
+    return GetItemModel.from_item(item)
 
 
 def get_cart(
@@ -90,7 +111,7 @@ def add_to_cart(
     carts_repository.save_cart(cart)
 
 
-def remove_from_cart(item_id: str, email: str, carts_repository: CartsRepository):
+def remove_from_cart(item_id: str, email: str, repository: CartsRepository):
     """Удаление товара из коризны
 
     Args:
@@ -99,7 +120,7 @@ def remove_from_cart(item_id: str, email: str, carts_repository: CartsRepository
         carts_repository (CartsRepository): хранилище корзин
     """
 
-    cart = carts_repository.get_cart(email=email)
+    cart = repository.get_cart(email=email)
     new_items = []
     has_item = False
 
@@ -113,7 +134,7 @@ def remove_from_cart(item_id: str, email: str, carts_repository: CartsRepository
         raise KeyError("item not found in cart")
 
     cart.items = new_items
-    carts_repository.save_cart(cart)
+    repository.save_cart(cart)
 
 
 def checkout(

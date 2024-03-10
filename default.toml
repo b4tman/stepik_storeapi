@@ -1,0 +1,16 @@
+[[users]]
+class = "User"
+id = "2e6db091-cbbc-4b78-98b0-1ec90cd7daae"
+email = "vasya@example.com"
+
+[[users]]
+class = "Manager"
+id = "0bc224c6-f78e-4de9-a3de-fe17451e6d0d"
+email = "ivan@example.com"
+password = "test"
+
+[[users]]
+class = "Admin"
+id = "c56013d7-f913-4b88-bc76-52bfe4a1791d"
+email = "admin@example.com"
+password = "god"

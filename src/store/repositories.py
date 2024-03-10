@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import shelve
 from uuid import uuid4
 import os
+from store.default import default_users
 
 from store.domains import Admin, Manager, User, Item, Cart, Order
 
@@ -128,22 +129,7 @@ class MemoryUsersRepository(UsersRepository):
     """
 
     def __init__(self):
-        self.users = [
-            User(
-                id="2e6db091-cbbc-4b78-98b0-1ec90cd7daae",
-                email="vasya@example.com",
-            ),
-            Manager(
-                id="0bc224c6-f78e-4de9-a3de-fe17451e6d0d",
-                email="ivan@example.com",
-                password="test",
-            ),
-            Admin(
-                id="c56013d7-f913-4b88-bc76-52bfe4a1791d",
-                email="admin@example.com",
-                password="god",
-            ),
-        ]
+        self.users = default_users()
 
     def get_users(
         self, email: str | None = None, password: str | None = None

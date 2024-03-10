@@ -32,6 +32,9 @@ class Role(Enum):
             return NotImplemented
         return self.value.__lt__(other.value)
 
+    def __hash__(self) -> int:
+        return self.value.__hash__()
+
 
 @dataclass
 class Item:
@@ -97,7 +100,7 @@ class Manager(User):
       - hash (str): хеш пароля
     """
 
-    password: str
+    password: str = ""
     salt: str = field(init=False)
     hash: str = field(init=False)
 

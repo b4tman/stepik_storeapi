@@ -14,7 +14,7 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.types import CHAR, TypeDecorator
 
-from store.default import default_users
+from store.default import Defaults
 from store.domains import Admin, Cart, Item, Manager, Order, Role, User
 from store.utils import SingletonMeta
 
@@ -261,8 +261,24 @@ class OrderOrm(Base):
 
 def create_default_users(db: Database):
     with db._session() as session:
-        session.add_all(map(UserOrm.from_object, default_users()))
+        session.add_all(map(UserOrm.from_object, Defaults().users))
+        session.commit()
+
+
+def create_default_items(db: Database):
+    with db._session() as session:
+        session.add_all(map(ItemOrm.from_object, Defaults().items))
+        session.commit()
+
+
+def create_default_carts(db: Database):
+    with db._session() as session:
+        session.add_all(
+            map(lambda x: CartOrm.from_object(x, session), Defaults().carts)
+        )
         session.commit()
 
 
 Database.add_init_data_callback(create_default_users)
+Database.add_init_data_callback(create_default_items)
+Database.add_init_data_callback(create_default_carts)

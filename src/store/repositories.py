@@ -1,11 +1,8 @@
 from abc import ABC, abstractmethod
-import shelve
 from uuid import uuid4
-import os
-from store.default import default_users
-from store.database import Database, ItemOrm, UserOrm, CartOrm, OrderOrm
 
-from store.domains import Admin, Manager, User, Item, Cart, Order
+from store.database import CartOrm, Database, ItemOrm, OrderOrm, UserOrm
+from store.domains import Cart, Item, Manager, Order, User
 from store.utils import SingletonMeta
 
 

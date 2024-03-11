@@ -1,7 +1,7 @@
 from dataclasses import asdict
 import os
-from typing import Annotated
-from sqlalchemy import create_engine
+from typing import Annotated, TypeVar
+from sqlalchemy import Column, ForeignKey, String, Table, create_engine, inspect
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -15,11 +15,13 @@ from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from store.default import default_users
 
-from store.domains import Admin, Manager, Role, User
+from store.domains import Admin, Cart, Item, Manager, Order, Role, User
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+DATABASE_INIT_DATA = os.getenv("DATABASE_INIT_DATA", "yes").lower() == "yes"
 
 engine = create_engine(DATABASE_URL, echo=True)
+session_factory = sessionmaker(engine)
 
 
 class GUID(TypeDecorator):
@@ -73,6 +75,10 @@ class Base(DeclarativeBase): ...
 guidpk = Annotated[
     str, mapped_column(GUID(), primary_key=True, default=lambda: str(uuid.uuid4()))
 ]
+email_uniq = Annotated[str, mapped_column(unique=True, nullable=False, index=True)]
+optional_str = Annotated[str | None, mapped_column(nullable=True, default=None)]
+
+UserOrmT = TypeVar("UserOrmT", bound="UserOrm")
 
 
 class UserOrm(Base):
@@ -81,20 +87,19 @@ class UserOrm(Base):
     role: Mapped[Role] = mapped_column(
         Enum(Role), default=Role.USER, nullable=False, index=True
     )
-    email: Mapped[str] = mapped_column(unique=True, nullable=False, index=True)
-    salt: Mapped[str | None] = mapped_column(nullable=True, default=None)
-    hash: Mapped[str | None] = mapped_column(nullable=True, default=None)
+    email: Mapped[email_uniq]
+    salt: Mapped[optional_str]
+    hash: Mapped[optional_str]
 
     def to_object(self) -> User:
-        role = Role[self.role]
         cls = {Role.MANAGER: Manager, Role.ADMIN: Admin, Role.USER: User}
-        obj = cls.get(role, User)(self.id, self.email)
-        if role >= Role.MANAGER:
+        obj = cls.get(self.role, User)(self.id, self.email)
+        if self.role >= Role.MANAGER:
             obj.salt, obj.hash = self.salt, self.hash
         return obj
 
     @classmethod
-    def from_object(cls, user: User):
+    def from_object(cls, user: User) -> UserOrmT:
         data = asdict(user)
         if "password" in data:
             del data["password"]
@@ -103,7 +108,106 @@ class UserOrm(Base):
         return cls(**data, role=user.role())
 
 
-session_factory = sessionmaker(engine)
+ItemsOrmT = TypeVar("ItemsOrmT", bound="ItemsOrm")
+
+
+class ItemsOrm(Base):
+    __tablename__ = "items"
+    id: Mapped[guidpk]
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    price: Mapped[int] = mapped_column(nullable=False)
+    description: Mapped[optional_str]
+
+    def to_object(self) -> Item:
+        return Item(self.id, self.name, self.price, self.description)
+
+    @classmethod
+    def from_object(cls, item: Item, session=None, update=False) -> ItemsOrmT:
+        if session is not None:
+            entity = session.get(ItemsOrm, item.id)
+            if entity is not None:
+                if update:
+                    for attr in ("name", "price", "description"):
+                        old = getattr(entity, attr)
+                        new = getattr(item, attr)
+                        if old != new:
+                            setattr(entity, attr, new)
+                return entity
+        return cls(**asdict(item))
+
+
+cart_items = Table(
+    "cart_items",
+    Base.metadata,
+    Column("cart_id", ForeignKey("carts.id"), primary_key=True),
+    Column("items_id", ForeignKey("items.id"), primary_key=True),
+)
+
+CartOrmT = TypeVar("CartOrmT", bound="CartOrm")
+
+
+class CartOrm(Base):
+    __tablename__ = "carts"
+    id: Mapped[guidpk]
+    email: Mapped[email_uniq]
+    items: Mapped[list[ItemsOrm]] = relationship(secondary=cart_items)
+
+    def to_object(self) -> Cart:
+        return Cart(self.id, self.email, [*map(ItemsOrm.to_object, self.items)])
+
+    @classmethod
+    def from_object(cls, cart: Cart, /, session=None, *, update=False) -> CartOrmT:
+        items_converter = lambda x: ItemsOrm.from_object(x, session)
+        if session is not None:
+            entity = session.get(CartOrm, cart.id)
+            if entity is not None:
+                if update:
+                    if entity.email != cart.email:
+                        entity.email = cart.email
+                    item_ids = sorted(map(lambda x: x.id, entity.items))
+                    other_item_ids = sorted(map(lambda x: x.id, cart.items))
+                    if item_ids != other_item_ids:
+                        entity.items = [*map(items_converter, cart.items)]
+                return entity
+        data = {
+            "id": cart.id,
+            "email": cart.email,
+            "items": [*map(items_converter, cart.items)],
+        }
+        return cls(**data)
+
+
+order_items = Table(
+    "order_items",
+    Base.metadata,
+    Column("order_id", ForeignKey("orders.id"), primary_key=True),
+    Column("items_id", ForeignKey("items.id"), primary_key=True),
+)
+
+OrderOrmT = TypeVar("OrderOrmT", bound="OrderOrm")
+
+
+class OrderOrm(Base):
+    __tablename__ = "orders"
+    id: Mapped[guidpk]
+    email: Mapped[email_uniq]
+    items: Mapped[list[ItemsOrm]] = relationship(secondary=order_items)
+
+    def to_object(self) -> Order:
+        return Order(self.id, self.email, [*map(ItemsOrm.to_object, self.items)])
+
+    @classmethod
+    def from_object(cls, order: Order, session=None) -> OrderOrmT:
+        if session is not None:
+            entity = session.get(OrderOrm, order.id)
+            if entity is not None:
+                return entity
+        data = {
+            "id": order.id,
+            "email": order.email,
+            "items": [*map(lambda x: ItemsOrm.from_object(x, session), order.items)],
+        }
+        return cls(**data)
 
 
 def create_default_users():
@@ -113,5 +217,11 @@ def create_default_users():
         session.commit()
 
 
-Base.metadata.create_all(engine)
-create_default_users()
+def bootstrap():
+    if not inspect(engine).has_table("users"):
+        Base.metadata.create_all(engine)
+        if DATABASE_INIT_DATA:
+            create_default_users()
+
+
+bootstrap()

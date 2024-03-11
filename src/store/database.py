@@ -1,7 +1,10 @@
-from dataclasses import asdict
 import os
-from typing import Annotated, TypeVar
-from sqlalchemy import Column, ForeignKey, String, Table, create_engine, inspect
+import uuid
+from dataclasses import asdict
+from typing import Annotated, Callable, TypeVar
+
+from sqlalchemy import Column, Enum, ForeignKey, String, Table, create_engine, inspect
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -9,19 +12,66 @@ from sqlalchemy.orm import (
     relationship,
     sessionmaker,
 )
-from sqlalchemy.types import TypeDecorator, CHAR
-from sqlalchemy import Enum
-from sqlalchemy.dialects.postgresql import UUID
-import uuid
+from sqlalchemy.types import CHAR, TypeDecorator
+
 from store.default import default_users
-
 from store.domains import Admin, Cart, Item, Manager, Order, Role, User
+from store.utils import SingletonMeta
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
-DATABASE_INIT_DATA = os.getenv("DATABASE_INIT_DATA", "yes").lower() == "yes"
+DatabaseT = TypeVar("DatabaseT", bound="Database")
 
-engine = create_engine(DATABASE_URL, echo=True)
-session_factory = sessionmaker(engine)
+
+class Base(DeclarativeBase): ...
+
+
+class Database(metaclass=SingletonMeta):
+    _init_data_callbacks: list[Callable[[DatabaseT], None]] = []
+
+    def __init__(self):
+        self.setup_url()
+        self._engine = create_engine(self.url, echo=True)
+        self._session = sessionmaker(self._engine)
+        self._ready = False
+
+    def setup_url(self):
+        url = os.getenv("DATABASE_URL")
+        if url is None:
+            self.setup_url_from_path()
+        else:
+            self.url = url
+
+    def setup_url_from_path(self):
+        path = os.getenv("DB_PATH", "db")
+        self.url = f"sqlite+pysqlite:///{path}/database.sqlite"
+        if not os.path.isdir(path):
+            os.mkdir(path)
+
+    @property
+    def engine(self):
+        self.check_ready()
+        return self._engine
+
+    @property
+    def session(self):
+        self.check_ready()
+        return self._session
+
+    def check_ready(self):
+        if self._ready:
+            return
+        if not inspect(self._engine).has_table("users"):
+            self.bootstrap()
+        self._ready = True
+
+    @classmethod
+    def add_init_data_callback(cls, callback: Callable[[DatabaseT], None]):
+        cls._init_data_callbacks.append(callback)
+
+    def bootstrap(self):
+        Base.metadata.create_all(self._engine)
+        if os.getenv("DATABASE_INIT_DATA", "yes").lower() == "yes":
+            for callback in self._init_data_callbacks:
+                callback(self)
 
 
 class GUID(TypeDecorator):
@@ -67,9 +117,6 @@ class GUID(TypeDecorator):
 
     def sort_key_function(self, value):
         return self._uuid_value(value)
-
-
-class Base(DeclarativeBase): ...
 
 
 guidpk = Annotated[
@@ -139,8 +186,8 @@ class ItemsOrm(Base):
 cart_items = Table(
     "cart_items",
     Base.metadata,
-    Column("cart_id", ForeignKey("carts.id"), primary_key=True),
-    Column("items_id", ForeignKey("items.id"), primary_key=True),
+    Column("cart_id", ForeignKey("carts.id", ondelete="CASCADE"), primary_key=True),
+    Column("items_id", ForeignKey("items.id", ondelete="CASCADE"), primary_key=True),
 )
 
 CartOrmT = TypeVar("CartOrmT", bound="CartOrm")
@@ -180,8 +227,8 @@ class CartOrm(Base):
 order_items = Table(
     "order_items",
     Base.metadata,
-    Column("order_id", ForeignKey("orders.id"), primary_key=True),
-    Column("items_id", ForeignKey("items.id"), primary_key=True),
+    Column("order_id", ForeignKey("orders.id", ondelete="CASCADE"), primary_key=True),
+    Column("items_id", ForeignKey("items.id", ondelete="CASCADE"), primary_key=True),
 )
 
 OrderOrmT = TypeVar("OrderOrmT", bound="OrderOrm")
@@ -210,18 +257,10 @@ class OrderOrm(Base):
         return cls(**data)
 
 
-def create_default_users():
-    with session_factory() as session:
-        users = [*map(UserOrm.from_object, default_users())]
-        session.add_all(users)
+def create_default_users(db: Database):
+    with db._session() as session:
+        session.add_all(map(UserOrm.from_object, default_users()))
         session.commit()
 
 
-def bootstrap():
-    if not inspect(engine).has_table("users"):
-        Base.metadata.create_all(engine)
-        if DATABASE_INIT_DATA:
-            create_default_users()
-
-
-bootstrap()
+Database.add_init_data_callback(create_default_users)

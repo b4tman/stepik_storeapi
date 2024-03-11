@@ -149,7 +149,7 @@ class OrmItemsRepository(ItemsRepository):
             item = session.get(ItemOrm, item_id)
             if item is None:
                 raise KeyError("item not found")
-            return item
+            return item.to_object()
 
     def save_item(self, item: Item):
         with self.db.session() as session:
@@ -176,22 +176,15 @@ class OrmCartsRepository(CartsRepository):
         with self.db.session() as session:
             cart = session.query(CartOrm).filter(CartOrm.email == email).scalar()
             if cart is None:
-                cart = CartOrm(email=email, items=[])
-                session.add(cart)
-                session.commit()
+                return Cart(id=str(uuid4()), email=email, items=[])
             return cart.to_object()
 
     def save_cart(self, cart: Cart):
         with self.db.session() as session:
-            # CartOrm.from_object(cart, session, update=True)
-            obj = session.get(CartOrm, cart.id)
-            if obj is None:
-                session.add(CartOrm.from_object(cart, session))
-            else:
-                obj.email = cart.email
-                obj.items = [
-                    *map(lambda x: ItemOrm.from_object(x, session), cart.items)
-                ]
+            is_new = session.get(ItemOrm, cart.id) is None
+            obj = CartOrm.from_object(cart, session, update=True)
+            if is_new:
+                session.add(obj)
             session.commit()
 
 
@@ -203,7 +196,7 @@ class OrmOrdersRepository(OrdersRepository):
 
     def place_order(self, order: Order):
         with self.db.session() as session:
-            session.add(OrderOrm.from_object(order))
+            session.add(OrderOrm.from_object(order, session))
             session.commit()
 
 

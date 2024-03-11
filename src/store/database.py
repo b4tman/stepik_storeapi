@@ -167,21 +167,23 @@ class ItemOrm(Base):
     description: Mapped[optional_str]
 
     def to_object(self) -> Item:
-        return Item(self.id, self.name, self.price, self.description)
+        return Item(str(self.id), self.name, self.price, self.description)
 
     @classmethod
     def from_object(cls, item: Item, /, session=None, *, update=False) -> ItemOrmT:
+        data = asdict(item)
+        data["id"] = str(data["id"])
         if session is not None:
-            entity = session.get(ItemOrm, item.id)
+            entity = session.get(ItemOrm, data["id"])
             if entity is not None:
                 if update:
                     for attr in ("name", "price", "description"):
                         old = getattr(entity, attr)
-                        new = getattr(item, attr)
+                        new = data[attr]
                         if old != new:
                             setattr(entity, attr, new)
                 return entity
-        return cls(**asdict(item))
+        return cls(**data)
 
 
 cart_items = Table(
@@ -201,7 +203,7 @@ class CartOrm(Base):
     items: Mapped[list[ItemOrm]] = relationship(secondary=cart_items)
 
     def to_object(self) -> Cart:
-        return Cart(self.id, self.email, [*map(ItemOrm.to_object, self.items)])
+        return Cart(str(self.id), self.email, [*map(ItemOrm.to_object, self.items)])
 
     @classmethod
     def from_object(cls, cart: Cart, /, session=None, *, update=False) -> CartOrmT:
@@ -210,8 +212,7 @@ class CartOrm(Base):
             entity = session.get(CartOrm, cart.id)
             if entity is not None:
                 if update:
-                    if entity.email != cart.email:
-                        entity.email = cart.email
+                    entity.email = cart.email
                     item_ids = sorted(map(lambda x: x.id, entity.items))
                     other_item_ids = sorted(map(lambda x: x.id, cart.items))
                     if item_ids != other_item_ids:
@@ -242,7 +243,7 @@ class OrderOrm(Base):
     items: Mapped[list[ItemOrm]] = relationship(secondary=order_items)
 
     def to_object(self) -> Order:
-        return Order(self.id, self.email, [*map(ItemOrm.to_object, self.items)])
+        return Order(str(self.id), self.email, [*map(ItemOrm.to_object, self.items)])
 
     @classmethod
     def from_object(cls, order: Order, session=None) -> OrderOrmT:

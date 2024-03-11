@@ -3,19 +3,10 @@ import shelve
 from uuid import uuid4
 import os
 from store.default import default_users
+from store.database import Database, UserOrm
 
 from store.domains import Admin, Manager, User, Item, Cart, Order
-
-
-class SingletonMeta(type):
-    """Метакласс для Singleton классов"""
-
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(SingletonMeta, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
+from store.utils import SingletonMeta
 
 
 class UsersRepository(ABC):
@@ -122,33 +113,37 @@ class ShelveDatabase(metaclass=SingletonMeta):
         return os.path.join(self.path, name)
 
 
-class MemoryUsersRepository(UsersRepository):
+class OrmUsersRepository(UsersRepository):
     """
-    Реализация пользовательского хранилища в оперативной памяти.
-    Пользователи инициализируются во время инициализации репозитория
+    Реализация пользовательского хранилища через SqlAlchemy orm.
     """
 
     def __init__(self):
-        self.users = default_users()
+        self.db = Database()
 
     def get_users(
         self, email: str | None = None, password: str | None = None
     ) -> list[User]:
-        filtered_users = []  # тут собираются отфильтрованные пользователи
-        for (
-            user
-        ) in (
-            self.users
-        ):  # перебираем всех пользователей и осталвяем только тех, кто прошел фильтры
-            if email is not None and user.email != email:
-                continue
-            if not isinstance(user, Manager):
-                continue
-            if password is not None and not user.authenticate(password):
-                continue
-            filtered_users.append(user)
-            if password is not None or email is not None:
-                break  # только 1 пользователь по email или password
+        filtered_users = []
+
+        with self.db.session() as s:
+            if email is not None:
+                users = s.query(UserOrm).filter(UserOrm.email == email)
+            else:
+                users = s.query(UserOrm).all()
+            for user in map(UserOrm.to_object, users):
+                if email is None:
+                    filtered_users.append(user)
+                    continue
+
+                # не выполняем аутентификацию для пользователей ниже чем Менеджер
+                if not isinstance(user, Manager):
+                    continue
+                if password is not None and not user.authenticate(password):
+                    continue
+                filtered_users.append(user)
+                if password is not None or email is not None:
+                    break
         return filtered_users
 
 
@@ -207,7 +202,7 @@ class ShelveOrdersRepository(OrdersRepository):
 class Repository(metaclass=SingletonMeta):
     """Настройки хранилищ"""
 
-    users_repo = MemoryUsersRepository
+    users_repo = OrmUsersRepository
     items_repo = ShelveItemsRepository
     carts_repo = ShelveCartsRepository
     orders_repo = ShelveOrdersRepository

@@ -6,9 +6,9 @@ import pytest
 from store.main import create_app
 
 
-@pytest.fixture
-def test_app(tmpdir) -> FastAPI:
-    os.environ["DB_PATH"] = str(tmpdir.mkdir("db"))
+@pytest.fixture(scope="session")
+def test_app(tmpdir_factory) -> FastAPI:
+    os.environ["DB_PATH"] = str(tmpdir_factory.mktemp("db"))
     return create_app()
 
 

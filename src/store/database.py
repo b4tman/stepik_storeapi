@@ -122,6 +122,7 @@ class GUID(TypeDecorator):
 guidpk = Annotated[
     str, mapped_column(GUID(), primary_key=True, default=lambda: str(uuid.uuid4()))
 ]
+email = Annotated[str, mapped_column(nullable=False, index=True)]
 email_uniq = Annotated[str, mapped_column(unique=True, nullable=False, index=True)]
 optional_str = Annotated[str | None, mapped_column(nullable=True, default=None)]
 
@@ -155,10 +156,10 @@ class UserOrm(Base):
         return cls(**data, role=user.role())
 
 
-ItemsOrmT = TypeVar("ItemsOrmT", bound="ItemsOrm")
+ItemOrmT = TypeVar("ItemOrmT", bound="ItemOrm")
 
 
-class ItemsOrm(Base):
+class ItemOrm(Base):
     __tablename__ = "items"
     id: Mapped[guidpk]
     name: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -169,9 +170,9 @@ class ItemsOrm(Base):
         return Item(self.id, self.name, self.price, self.description)
 
     @classmethod
-    def from_object(cls, item: Item, session=None, update=False) -> ItemsOrmT:
+    def from_object(cls, item: Item, /, session=None, *, update=False) -> ItemOrmT:
         if session is not None:
-            entity = session.get(ItemsOrm, item.id)
+            entity = session.get(ItemOrm, item.id)
             if entity is not None:
                 if update:
                     for attr in ("name", "price", "description"):
@@ -197,14 +198,14 @@ class CartOrm(Base):
     __tablename__ = "carts"
     id: Mapped[guidpk]
     email: Mapped[email_uniq]
-    items: Mapped[list[ItemsOrm]] = relationship(secondary=cart_items)
+    items: Mapped[list[ItemOrm]] = relationship(secondary=cart_items)
 
     def to_object(self) -> Cart:
-        return Cart(self.id, self.email, [*map(ItemsOrm.to_object, self.items)])
+        return Cart(self.id, self.email, [*map(ItemOrm.to_object, self.items)])
 
     @classmethod
     def from_object(cls, cart: Cart, /, session=None, *, update=False) -> CartOrmT:
-        items_converter = lambda x: ItemsOrm.from_object(x, session)
+        items_converter = lambda x: ItemOrm.from_object(x, session)
         if session is not None:
             entity = session.get(CartOrm, cart.id)
             if entity is not None:
@@ -237,11 +238,11 @@ OrderOrmT = TypeVar("OrderOrmT", bound="OrderOrm")
 class OrderOrm(Base):
     __tablename__ = "orders"
     id: Mapped[guidpk]
-    email: Mapped[email_uniq]
-    items: Mapped[list[ItemsOrm]] = relationship(secondary=order_items)
+    email: Mapped[email]
+    items: Mapped[list[ItemOrm]] = relationship(secondary=order_items)
 
     def to_object(self) -> Order:
-        return Order(self.id, self.email, [*map(ItemsOrm.to_object, self.items)])
+        return Order(self.id, self.email, [*map(ItemOrm.to_object, self.items)])
 
     @classmethod
     def from_object(cls, order: Order, session=None) -> OrderOrmT:
@@ -252,7 +253,7 @@ class OrderOrm(Base):
         data = {
             "id": order.id,
             "email": order.email,
-            "items": [*map(lambda x: ItemsOrm.from_object(x, session), order.items)],
+            "items": [*map(lambda x: ItemOrm.from_object(x, session), order.items)],
         }
         return cls(**data)
 

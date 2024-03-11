@@ -3,7 +3,7 @@ import shelve
 from uuid import uuid4
 import os
 from store.default import default_users
-from store.database import Database, UserOrm
+from store.database import Database, ItemOrm, UserOrm, CartOrm, OrderOrm
 
 from store.domains import Admin, Manager, User, Item, Cart, Order
 from store.utils import SingletonMeta
@@ -100,22 +100,9 @@ class OrdersRepository(ABC):
         pass
 
 
-class ShelveDatabase(metaclass=SingletonMeta):
-    def __init__(self):
-        self.path = os.getenv("DB_PATH", "db")
-        self.ensure_path()
-
-    def ensure_path(self):
-        if not os.path.isdir(self.path):
-            os.mkdir(self.path)
-
-    def path_for(self, name):
-        return os.path.join(self.path, name)
-
-
 class OrmUsersRepository(UsersRepository):
     """
-    Реализация пользовательского хранилища через SqlAlchemy orm.
+    Реализация пользовательского хранилища через orm SqlAlchemy.
     """
 
     def __init__(self):
@@ -147,65 +134,86 @@ class OrmUsersRepository(UsersRepository):
         return filtered_users
 
 
-class ShelveItemsRepository(ItemsRepository):
-    """Реализация хранилища товаров через shelve"""
+class OrmItemsRepository(ItemsRepository):
+    """Реализация хранилища товаров через orm SqlAlchemy"""
 
     def __init__(self):
-        self.db_name = ShelveDatabase().path_for("items")
+        self.db = Database()
 
     def get_items(self) -> list[Item]:
-        with shelve.open(self.db_name) as db:
-            return list(db.values())
+        with self.db.session() as session:
+            return [*map(ItemOrm.to_object, session.query(ItemOrm).all())]
 
     def get_item(self, item_id: str) -> Item:
-        with shelve.open(self.db_name) as db:
-            return db[item_id]
+        with self.db.session() as session:
+            item = session.get(ItemOrm, item_id)
+            if item is None:
+                raise KeyError("item not found")
+            return item
 
     def save_item(self, item: Item):
-        with shelve.open(self.db_name) as db:
-            db[item.id] = item
+        with self.db.session() as session:
+            obj = session.get(ItemOrm, item.id)
+            if obj is None:
+                session.add(ItemOrm.from_object(item))
+            else:
+                obj.name = item.name
+                obj.description = item.description
+                obj.price = item.price
+            session.commit()
 
 
-class ShelveCartsRepository(CartsRepository):
-    """Реализация хранилища корзин через shelve"""
+class OrmCartsRepository(CartsRepository):
+    """Реализация хранилища корзин через orm SqlAlchemy"""
 
     def __init__(self):
-        self.db_name = ShelveDatabase().path_for("carts")
+        self.db = Database()
 
     def get_cart(self, user: User | None = None, email: str | None = None) -> Cart:
         if user is None and email is None:
             raise ValueError("no email")
         email = email or user.email
-        with shelve.open(self.db_name) as db:
-            for cart in db.values():
-                if cart.email == email:
-                    return cart
-            cart = Cart(str(uuid4()), email, [])
-            return cart
+        with self.db.session() as session:
+            cart = session.query(CartOrm).filter(CartOrm.email == email).scalar()
+            if cart is None:
+                cart = CartOrm(email=email, items=[])
+                session.add(cart)
+                session.commit()
+            return cart.to_object()
 
     def save_cart(self, cart: Cart):
-        with shelve.open(self.db_name) as db:
-            db[cart.id] = cart
+        with self.db.session() as session:
+            # CartOrm.from_object(cart, session, update=True)
+            obj = session.get(CartOrm, cart.id)
+            if obj is None:
+                session.add(CartOrm.from_object(cart, session))
+            else:
+                obj.email = cart.email
+                obj.items = [
+                    *map(lambda x: ItemOrm.from_object(x, session), cart.items)
+                ]
+            session.commit()
 
 
-class ShelveOrdersRepository(OrdersRepository):
-    """Реализация хранилища заказов через shelve"""
+class OrmOrdersRepository(OrdersRepository):
+    """Реализация хранилища заказов через orm SqlAlchemy"""
 
     def __init__(self):
-        self.db_name = ShelveDatabase().path_for("orders")
+        self.db = Database()
 
     def place_order(self, order: Order):
-        with shelve.open(self.db_name) as db:
-            db[order.id] = order
+        with self.db.session() as session:
+            session.add(OrderOrm.from_object(order))
+            session.commit()
 
 
 class Repository(metaclass=SingletonMeta):
     """Настройки хранилищ"""
 
     users_repo = OrmUsersRepository
-    items_repo = ShelveItemsRepository
-    carts_repo = ShelveCartsRepository
-    orders_repo = ShelveOrdersRepository
+    items_repo = OrmItemsRepository
+    carts_repo = OrmCartsRepository
+    orders_repo = OrmOrdersRepository
 
     @classmethod
     def users(cls):

@@ -1,7 +1,7 @@
 import os
 import uuid
 from dataclasses import asdict
-from typing import Annotated, Callable, TypeVar
+from typing import Annotated, Callable
 
 from sqlalchemy import Column, Enum, ForeignKey, String, Table, create_engine, inspect
 from sqlalchemy.dialects.postgresql import UUID
@@ -18,20 +18,19 @@ from store.default import Defaults
 from store.domains import Admin, Cart, Item, Manager, Order, Role, User
 from store.utils import SingletonMeta
 
-DatabaseT = TypeVar("DatabaseT", bound="Database")
-
 
 class Base(DeclarativeBase): ...
 
 
 class Database(metaclass=SingletonMeta):
-    _init_data_callbacks: list[Callable[[DatabaseT], None]] = []
+    _init_data_callbacks: list[Callable[["Database"], None]] = []
 
     def __init__(self):
         self.setup_url()
         self._engine = create_engine(self.url, echo=True)
         self._session = sessionmaker(self._engine)
         self._ready = False
+        self._init_mode = False
 
     def setup_url(self):
         url = os.getenv("DATABASE_URL")
@@ -57,21 +56,23 @@ class Database(metaclass=SingletonMeta):
         return self._session
 
     def check_ready(self):
-        if self._ready:
+        if self._ready or self._init_mode:
             return
         if not inspect(self._engine).has_table("users"):
             self.bootstrap()
         self._ready = True
 
     @classmethod
-    def add_init_data_callback(cls, callback: Callable[[DatabaseT], None]):
+    def add_init_data_callback(cls, callback: Callable[["Database"], None]):
         cls._init_data_callbacks.append(callback)
 
     def bootstrap(self):
         Base.metadata.create_all(self._engine)
         if os.getenv("DATABASE_INIT_DATA", "yes").lower() == "yes":
+            self._init_mode = True
             for callback in self._init_data_callbacks:
                 callback(self)
+            self._init_mode = False
 
 
 class GUID(TypeDecorator):
@@ -126,8 +127,6 @@ email = Annotated[str, mapped_column(nullable=False, index=True)]
 email_uniq = Annotated[str, mapped_column(unique=True, nullable=False, index=True)]
 optional_str = Annotated[str | None, mapped_column(nullable=True, default=None)]
 
-UserOrmT = TypeVar("UserOrmT", bound="UserOrm")
-
 
 class UserOrm(Base):
     __tablename__ = "users"
@@ -147,16 +146,13 @@ class UserOrm(Base):
         return obj
 
     @classmethod
-    def from_object(cls, user: User) -> UserOrmT:
+    def from_object(cls, user: User) -> "UserOrm":
         data = asdict(user)
         if "password" in data:
             del data["password"]
         if not data["id"]:
             del data["id"]
         return cls(**data, role=user.role())
-
-
-ItemOrmT = TypeVar("ItemOrmT", bound="ItemOrm")
 
 
 class ItemOrm(Base):
@@ -170,7 +166,7 @@ class ItemOrm(Base):
         return Item(str(self.id), self.name, self.price, self.description)
 
     @classmethod
-    def from_object(cls, item: Item, /, session=None, *, update=False) -> ItemOrmT:
+    def from_object(cls, item: Item, /, session=None, *, update=False) -> "ItemOrm":
         if session is not None:
             entity = session.get(ItemOrm, item.id)
             if entity is not None:
@@ -189,8 +185,6 @@ cart_items = Table(
     Column("items_id", ForeignKey("items.id", ondelete="CASCADE"), primary_key=True),
 )
 
-CartOrmT = TypeVar("CartOrmT", bound="CartOrm")
-
 
 class CartOrm(Base):
     __tablename__ = "carts"
@@ -202,7 +196,7 @@ class CartOrm(Base):
         return Cart(str(self.id), self.email, [*map(ItemOrm.to_object, self.items)])
 
     @classmethod
-    def from_object(cls, cart: Cart, /, session=None, *, update=False) -> CartOrmT:
+    def from_object(cls, cart: Cart, /, session=None, *, update=False) -> "CartOrm":
         items_converter = lambda x: ItemOrm.from_object(x, session)
         if session is not None:
             entity = session.get(CartOrm, cart.id)
@@ -229,8 +223,6 @@ order_items = Table(
     Column("items_id", ForeignKey("items.id", ondelete="CASCADE"), primary_key=True),
 )
 
-OrderOrmT = TypeVar("OrderOrmT", bound="OrderOrm")
-
 
 class OrderOrm(Base):
     __tablename__ = "orders"
@@ -242,7 +234,7 @@ class OrderOrm(Base):
         return Order(str(self.id), self.email, [*map(ItemOrm.to_object, self.items)])
 
     @classmethod
-    def from_object(cls, order: Order, session=None) -> OrderOrmT:
+    def from_object(cls, order: Order, session=None) -> "OrderOrm":
         if session is not None:
             entity = session.get(OrderOrm, order.id)
             if entity is not None:
@@ -256,19 +248,19 @@ class OrderOrm(Base):
 
 
 def create_default_users(db: Database):
-    with db._session() as session:
+    with db.session() as session:
         session.add_all(map(UserOrm.from_object, Defaults().users))
         session.commit()
 
 
 def create_default_items(db: Database):
-    with db._session() as session:
+    with db.session() as session:
         session.add_all(map(ItemOrm.from_object, Defaults().items))
         session.commit()
 
 
 def create_default_carts(db: Database):
-    with db._session() as session:
+    with db.session() as session:
         session.add_all(
             map(lambda x: CartOrm.from_object(x, session), Defaults().carts)
         )

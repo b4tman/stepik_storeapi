@@ -200,7 +200,7 @@ class CartOrm(Base):
     __tablename__ = "carts"
     id: Mapped[guidpk]
     email: Mapped[email_uniq]
-    items: Mapped[list[ItemOrm]] = relationship(secondary=cart_items)
+    items: Mapped[list[ItemOrm]] = relationship(secondary=cart_items, lazy="selectin")
 
     def to_object(self) -> Cart:
         return Cart(str(self.id), self.email, [*map(ItemOrm.to_object, self.items)])
@@ -240,7 +240,7 @@ class OrderOrm(Base):
     __tablename__ = "orders"
     id: Mapped[guidpk]
     email: Mapped[email]
-    items: Mapped[list[ItemOrm]] = relationship(secondary=order_items)
+    items: Mapped[list[ItemOrm]] = relationship(secondary=order_items, lazy="selectin")
 
     def to_object(self) -> Order:
         return Order(str(self.id), self.email, [*map(ItemOrm.to_object, self.items)])

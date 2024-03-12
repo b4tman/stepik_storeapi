@@ -112,7 +112,7 @@ class OrmUsersRepository(UsersRepository):
 
         with self.db.session() as s:
             if email is not None:
-                users = s.query(UserOrm).filter(UserOrm.email == email)
+                users = s.query(UserOrm).filter_by(email=email)
             else:
                 users = s.query(UserOrm).all()
             for user in map(UserOrm.to_object, users):
@@ -171,7 +171,7 @@ class OrmCartsRepository(CartsRepository):
             raise ValueError("no email")
         email = email or user.email
         with self.db.session() as session:
-            cart = session.query(CartOrm).filter(CartOrm.email == email).scalar()
+            cart = session.query(CartOrm).filter_by(email=email).scalar()
             if cart is None:
                 return Cart(id=str(uuid4()), email=email, items=[])
             return cart.to_object()

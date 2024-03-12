@@ -13,6 +13,9 @@ from store.schemas import (
 
 router = APIRouter(prefix="/cart", tags=["Корзина"])
 
+EmailInPath = Annotated[EmailStr, Path()]
+UUIDInPath = Annotated[UUID4, Path()]
+
 
 @router.get(
     "/{email}",
@@ -22,7 +25,7 @@ router = APIRouter(prefix="/cart", tags=["Корзина"])
         200: {"model": GetCartModel},
     },
 )
-def get_cart(email: Annotated[EmailStr, Path()]) -> GetCartModel:
+def get_cart(email: EmailInPath) -> GetCartModel:
     """Получение корзины
 
     Args:
@@ -74,9 +77,7 @@ def add_to_cart(data: Annotated[AddToCartModel, Depends()]):
     status_code=status.HTTP_204_NO_CONTENT,
     responses={204: {"model": None}, 404: {"model": ErrorModel}},
 )
-def remove_from_cart(
-    email: Annotated[EmailStr, Path()], item_id: Annotated[UUID4, Path()]
-):
+def remove_from_cart(email: EmailInPath, item_id: UUIDInPath):
     """Удаление товара из корзины
 
     Args:

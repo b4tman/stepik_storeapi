@@ -125,7 +125,7 @@ def remove_from_cart(item_id: str, email: str, repository: CartsRepository):
     has_item = False
 
     for item in cart.items:
-        if item.id != item_id:
+        if str(item.id) != str(item_id):
             new_items.append(item)
         else:
             has_item = True

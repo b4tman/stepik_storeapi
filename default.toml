@@ -1,0 +1,50 @@
+# В этом файле содержатся данные для начального заполнения базы.
+# Данные заполянются если в базе нет таблицы users, только если
+# переменная окружения DATABASE_INIT_DATA = false.
+
+
+# Пользователи
+
+[[users]]
+class = "User"
+id = "2e6db091-cbbc-4b78-98b0-1ec90cd7daae"
+email = "vasya@example.com"
+
+[[users]]
+class = "Manager"
+id = "0bc224c6-f78e-4de9-a3de-fe17451e6d0d"
+email = "ivan@example.com"
+password = "test"
+
+[[users]]
+class = "Admin"
+id = "c56013d7-f913-4b88-bc76-52bfe4a1791d"
+email = "admin@example.com"
+password = "god"
+
+# Товары
+
+[[items]]
+id = "ed4f9f81-3e15-46fe-8810-b344c4d63da8"
+name = "Пылесос"
+description = "Очень хороший пылесос"
+price = 123000
+
+[[items]]
+id = "bfa8bc96-9e86-4eee-a287-31ac48b879e5"
+name = "Телевизор"
+price = 100000
+
+[[items]]
+id = "39c95cb8-bbd1-46bf-b5d6-e0122036e837"
+name = "Магнитофон"
+description = "мощный 💪"
+price = 420000
+
+# Корзины
+
+[[carts]]
+
+id = "4e065885-60a5-4f48-b88c-447cfef25071"
+email = "vasya@example.com"
+items = [{id = "39c95cb8-bbd1-46bf-b5d6-e0122036e837", name = "Магнитофон", price=0}]

@@ -171,19 +171,15 @@ class ItemOrm(Base):
 
     @classmethod
     def from_object(cls, item: Item, /, session=None, *, update=False) -> ItemOrmT:
-        data = asdict(item)
-        data["id"] = str(data["id"])
         if session is not None:
-            entity = session.get(ItemOrm, data["id"])
+            entity = session.get(ItemOrm, item.id)
             if entity is not None:
                 if update:
-                    for attr in ("name", "price", "description"):
-                        old = getattr(entity, attr)
-                        new = data[attr]
-                        if old != new:
-                            setattr(entity, attr, new)
+                    entity.name = item.name
+                    entity.price = item.price
+                    entity.description = item.description
                 return entity
-        return cls(**data)
+        return cls(**asdict(item))
 
 
 cart_items = Table(

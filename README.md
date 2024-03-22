@@ -2,6 +2,8 @@
 
 Решение задачи ["API магазина"](https://stepik.org/lesson/1186984/step/8?unit=1222202) для курса ["Python-разработчик"](https://stepik.org/course/122813/) на [степике](https://stepik.org)
 
+А это мой [профиль](https://stepik.org/users/643075706/profile).
+
 Буду благодарен за фидбек в Issues или Discussions.
 
 ## Задача
